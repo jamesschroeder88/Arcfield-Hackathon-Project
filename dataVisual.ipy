@@ -1,0 +1,313 @@
+%matplotlib qt
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.animation import FuncAnimation
+
+#Author: James Schroeder
+
+# Load the spreadsheet
+df_take3 = pd.read_excel("D:\James College\Fall 2023\Hackathon\ArcCubeData\ArcCubeGMUHackathonPlotData-Take3-4Oct2023.xlsx", header=None)
+
+# Extracting key-value pairs from the record block considering all columns
+def extract_record_block_v3(block):
+    data = {}
+    for _, row in block.iterrows():
+        for cell in row:
+            if isinstance(cell, str) and "=" in cell:
+                key, value = [s.strip() for s in cell.split("=", 1)]
+                data[key] = value
+    return data
+
+# Identifying start and end indices for each record block
+start_indices = df_take3[df_take3.iloc[:, 0] == "======== Start Record ========"].index
+end_indices = df_take3[df_take3.iloc[:, 0] == "========  end record  ========"].index
+
+# Extracting record blocks using the identified start and end indices
+records = []
+for start, end in zip(start_indices, end_indices):
+    block = df_take3.iloc[start:end]
+    record = extract_record_block_v3(block)
+    records.append(record)
+
+# Convert records into a structured DataFrame
+df_structured = pd.DataFrame(records)
+
+# Data Cleaning
+df_structured.drop(columns=["Year"], inplace=True)
+df_structured["Year"] = 2023
+
+# Convert relevant columns to appropriate data types
+numeric_columns = [
+    "Satellite Count", "Latitude", "Longitude", "Speed (unit MPH)", 
+    "Altitude (unit Feet)", "LightSensorLevel (unit TBD)", "accelX", 
+    "temperature (unit Celsius)", "pressure (unit pa)", "altitude (unit meter)", 
+    "humidity (unit percent)", "Sensor operating status", "Air quality index", 
+    "Concentration of total volatile organic compounds (unit ppb)", 
+    "Carbon dioxide equivalent concentration (unit ppm)"
+]
+for col in numeric_columns:
+    df_structured[col] = df_structured[col].astype(float)
+
+# Number of data points
+N = len(df_structured)
+
+# Duration of the animation
+duration = 60000  # 10 seconds = 10000
+interval = duration / N
+
+# Visualization
+#Note to future users at Arcfield, You can see the pattern I am using for each plot
+#The code for the plot animation is extremely repeatable
+
+# Plot for Latitude and Longitude
+fig_route, ax_route = plt.subplots(figsize=(8, 6))
+line_route, = ax_route.plot([], [], marker='o', markersize=1, linestyle='-')
+ax_route.set_xlim(-7.744e1 - 0.0035, -7.744e1 - 0.0005)
+ax_route.set_ylim(3.887e1 + 0.002, 3.887e1 + 0.0046)
+ax_route.set_title("Route taken during the test")
+ax_route.set_xlabel("Longitude")
+ax_route.set_ylabel("Latitude")
+ax_route.grid(True)
+
+# Animation for Latitude and Longitude
+def init_route():
+    line_route.set_data([], [])
+    return line_route,
+
+def update_route(frame):
+    line_route.set_data(df_structured["Longitude"][:frame], df_structured["Latitude"][:frame])
+    return line_route,
+
+ani_route = FuncAnimation(fig_route, update_route, frames=N, init_func=init_route, blit=True, repeat=False, interval=interval)
+
+# Plot and Animation for Speed over Time
+fig_speed, ax_speed = plt.subplots(figsize=(8, 6))
+line_speed, = ax_speed.plot([], [], color='blue')
+ax_speed.set_xlim(0, N)
+ax_speed.set_ylim(0, 25)
+ax_speed.set_title("Speed over Time")
+ax_speed.set_xlabel("Time")
+ax_speed.set_ylabel("Speed (unit MPH)")
+ax_speed.grid(True)
+
+def init_speed():
+    line_speed.set_data([], [])
+    return line_speed,
+
+def update_speed(frame):
+    line_speed.set_data(np.arange(frame), df_structured["Speed (unit MPH)"][:frame])
+    return line_speed,
+
+ani_speed = FuncAnimation(fig_speed, update_speed, frames=N, init_func=init_speed, blit=True, repeat=False, interval=interval)
+
+
+# Plot and Animation for LightSensorLevel over Time
+fig_light, ax_light = plt.subplots(figsize=(8, 6))
+line_light, = ax_light.plot([], [], color='orange')
+ax_light.set_xlim(0, N)
+ax_light.set_ylim(0, df_structured["LightSensorLevel (unit TBD)"].max() + 0.005)
+ax_light.set_title("LightSensorLevel over Time")
+ax_light.set_xlabel("Time")
+ax_light.set_ylabel("LightSensorLevel (unit TBD)")
+ax_light.grid(True)
+
+def init_light():
+    line_light.set_data([], [])
+    return line_light,
+
+def update_light(frame):
+    line_light.set_data(np.arange(frame), df_structured["LightSensorLevel (unit TBD)"][:frame])
+    return line_light,
+
+ani_light = FuncAnimation(fig_light, update_light, frames=N, init_func=init_light, blit=True, repeat=False, interval=interval)
+
+
+# Plot and Animation for Altitude over Time
+fig_altitude, ax_altitude = plt.subplots(figsize=(8, 6))
+line_altitude, = ax_altitude.plot([], [], color='green')
+ax_altitude.set_xlim(0, N)
+ax_altitude.set_ylim(0, df_structured["Altitude (unit Feet)"].max() + 500)
+ax_altitude.set_title("Altitude over Time")
+ax_altitude.set_xlabel("Time")
+ax_altitude.set_ylabel("Altitude (unit Feet)")
+ax_altitude.grid(True)
+
+def init_altitude():
+    line_altitude.set_data([], [])
+    return line_altitude,
+
+def update_altitude(frame):
+    line_altitude.set_data(np.arange(frame), df_structured["Altitude (unit Feet)"][:frame])
+    return line_altitude,
+
+ani_altitude = FuncAnimation(fig_altitude, update_altitude, frames=N, init_func=init_altitude, blit=True, repeat=False, interval=interval)
+
+# Plot and Animation for accelX over Time
+fig_accelX, ax_accelX = plt.subplots(figsize=(8, 6))
+line_accelX, = ax_accelX.plot([], [], color='orange')
+ax_accelX.set_xlim(0, N)
+ax_accelX.set_ylim(df_structured["accelX"].min() - 0.0025, df_structured["accelX"].max() + 0.0025)
+ax_accelX.set_title("Acceleration (accelX) over Time")
+ax_accelX.set_xlabel("Time")
+ax_accelX.set_ylabel("Acceleration (accelX)")
+ax_accelX.grid(True)
+
+def init_accelX():
+    line_accelX.set_data([], [])
+    return line_accelX,
+
+def update_accelX(frame):
+    line_accelX.set_data(np.arange(frame), df_structured["accelX"][:frame])
+    return line_accelX,
+
+ani_accelX = FuncAnimation(fig_accelX, update_accelX, frames=N, init_func=init_accelX, blit=True, repeat=False, interval=interval)
+
+
+# Plot and Animation for Temperature over Time
+fig_temp, ax_temp = plt.subplots(figsize=(8, 6))
+line_temp, = ax_temp.plot([], [], color='red')
+ax_temp.set_xlim(0, N)
+ax_temp.set_ylim(df_structured["temperature (unit Celsius)"].min() - 5, df_structured["temperature (unit Celsius)"].max() + 5)
+ax_temp.set_title("Temperature over Time")
+ax_temp.set_xlabel("Time")
+ax_temp.set_ylabel("Temperature (°C)")
+ax_temp.grid(True)
+
+def init_temp():
+    line_temp.set_data([], [])
+    return line_temp,
+
+def update_temp(frame):
+    line_temp.set_data(np.arange(frame), df_structured["temperature (unit Celsius)"][:frame])
+    return line_temp,
+
+ani_temp = FuncAnimation(fig_temp, update_temp, frames=N, init_func=init_temp, blit=True, repeat=False, interval=interval)
+
+
+# Plot and Animation for Humidity over Time
+fig_humidity, ax_humidity = plt.subplots(figsize=(8, 6))
+line_humidity, = ax_humidity.plot([], [], color='purple')
+ax_humidity.set_xlim(0, N)
+ax_humidity.set_ylim(df_structured["humidity (unit percent)"].min() - 5, df_structured["humidity (unit percent)"].max() + 5)
+ax_humidity.set_title("Humidity over Time")
+ax_humidity.set_xlabel("Time")
+ax_humidity.set_ylabel("Humidity (%)")
+ax_humidity.grid(True)
+
+def init_humidity():
+    line_humidity.set_data([], [])
+    return line_humidity,
+
+def update_humidity(frame):
+    line_humidity.set_data(np.arange(frame), df_structured["humidity (unit percent)"][:frame])
+    return line_humidity,
+
+ani_humidity = FuncAnimation(fig_humidity, update_humidity, frames=N, init_func=init_humidity, blit=True, repeat=False, interval=interval)
+
+# Plot and Animation for Air Quality Index over Time
+fig_air_quality, ax_air_quality = plt.subplots(figsize=(8, 6))
+line_air_quality, = ax_air_quality.plot([], [], color='cyan')
+ax_air_quality.set_xlim(0, N)
+ax_air_quality.set_ylim(0, df_structured["Air quality index"].max() + 10)
+ax_air_quality.set_title("Air Quality Index over Time")
+ax_air_quality.set_xlabel("Time")
+ax_air_quality.set_ylabel("Air Quality Index")
+ax_air_quality.grid(True)
+
+def init_air_quality():
+    line_air_quality.set_data([], [])
+    return line_air_quality,
+
+def update_air_quality(frame):
+    line_air_quality.set_data(np.arange(frame), df_structured["Air quality index"][:frame])
+    return line_air_quality,
+
+ani_air_quality = FuncAnimation(fig_air_quality, update_air_quality, frames=N, init_func=init_air_quality, blit=True, repeat=False, interval=interval)
+
+# Plot and Animation for Pressure over Time
+fig_pressure, ax_pressure = plt.subplots(figsize=(8, 6))
+line_pressure, = ax_pressure.plot([], [], color='brown')
+ax_pressure.set_xlim(0, N)
+ax_pressure.set_ylim(df_structured["pressure (unit pa)"].min() - 100, df_structured["pressure (unit pa)"].max() + 100)
+ax_pressure.set_title("Pressure over Time")
+ax_pressure.set_xlabel("Time")
+ax_pressure.set_ylabel("Pressure (unit pa)")
+ax_pressure.grid(True)
+
+def init_pressure():
+    line_pressure.set_data([], [])
+    return line_pressure,
+
+def update_pressure(frame):
+    line_pressure.set_data(np.arange(frame), df_structured["pressure (unit pa)"][:frame])
+    return line_pressure,
+
+ani_pressure = FuncAnimation(fig_pressure, update_pressure, frames=N, init_func=init_pressure, blit=True, repeat=False, interval=interval)
+
+# Plot and Animation for Concentration of Volatile Organic Compounds over Time
+fig_voc, ax_voc = plt.subplots(figsize=(8, 6))
+line_voc, = ax_voc.plot([], [], color='pink')
+ax_voc.set_xlim(0, N)
+ax_voc.set_ylim(0, df_structured["Concentration of total volatile organic compounds (unit ppb)"].max() + 10)
+ax_voc.set_title("Concentration of Volatile Organic Compounds over Time")
+ax_voc.set_xlabel("Time")
+ax_voc.set_ylabel("Concentration (unit ppb)")
+ax_voc.grid(True)
+
+def init_voc():
+    line_voc.set_data([], [])
+    return line_voc,
+
+def update_voc(frame):
+    line_voc.set_data(np.arange(frame), df_structured["Concentration of total volatile organic compounds (unit ppb)"][:frame])
+    return line_voc,
+
+ani_voc = FuncAnimation(fig_voc, update_voc, frames=N, init_func=init_voc, blit=True, repeat=False, interval=interval)
+
+# Plot and Animation for Carbon Dioxide Equivalent Concentration over Time
+fig_co2, ax_co2 = plt.subplots(figsize=(8, 6))
+line_co2, = ax_co2.plot([], [], color='gray')
+ax_co2.set_xlim(0, N)
+ax_co2.set_ylim(0, df_structured["Carbon dioxide equivalent concentration (unit ppm)"].max() + 10)
+ax_co2.set_title("Carbon Dioxide Equivalent Concentration over Time")
+ax_co2.set_xlabel("Time")
+ax_co2.set_ylabel("Concentration (unit ppm)")
+ax_co2.grid(True)
+
+def init_co2():
+    line_co2.set_data([], [])
+    return line_co2,
+
+def update_co2(frame):
+    line_co2.set_data(np.arange(frame), df_structured["Carbon dioxide equivalent concentration (unit ppm)"][:frame])
+    return line_co2,
+
+ani_co2 = FuncAnimation(fig_co2, update_co2, frames=N, init_func=init_co2, blit=True, repeat=False, interval=interval)
+
+#display all windows to fit my specific monitor
+screen_width = 1920
+screen_height = 1080
+fig_width = 400
+fig_height = 300
+spacing = 10
+
+# List of all figure objects
+figs = [fig_route, fig_speed, fig_light, fig_altitude, fig_accelX, fig_temp, fig_humidity, fig_air_quality, fig_pressure, fig_voc, fig_co2]
+
+for idx, fig in enumerate(figs):
+    if idx < 9:  # For the first 9 figures
+        row = idx // 3  # Determine the row for the figure
+        col = idx % 3  # Determine the column for the figure
+        x_pos = col * (fig_width + spacing)
+        y_pos = row * (fig_height + spacing)
+    else:  # For the 10th and 11th figures
+        x_pos = 3 * (fig_width + spacing)
+        y_pos = (idx - 9) * (fig_height + spacing)
+    
+    fig.canvas.manager.window.setGeometry(x_pos, y_pos, fig_width, fig_height)
+
+
+
+# Show the plots
+plt.show(block=True)
